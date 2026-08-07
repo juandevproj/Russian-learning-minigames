@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Fast, The Furious and The Kavkas - Игры на русском</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for retro Soviet typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Stalinist+One&family=Russo+One&family=Montserrat:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tone.js for high-fidelity vintage chiptune audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f2efe9;
+            color: #1a1a1a;
+        }
+
+        .soviet-border { border: 4px solid #1a1a1a; }
+        .soviet-shadow { box-shadow: 8px 8px 0px #1a1a1a; }
+        .soviet-shadow-sm { box-shadow: 4px 4px 0px #1a1a1a; }
+        .soviet-star { filter: drop-shadow(2px 2px 0px #1a1a1a); }
+        .russo-font { font-family: 'Russo One', sans-serif; letter-spacing: 0.5px; }
+        .stalinist-font { font-family: 'Stalinist One', cursive; }
+
+        .soviet-btn { transition: transform 0.1s, box-shadow 0.1s; }
+        .soviet-btn:hover:not(:disabled) {
+            transform: translate(-2px, -2px);
+            box-shadow: 10px 10px 0px #1a1a1a;
+        }
+        .soviet-btn:active:not(:disabled) {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 0px #1a1a1a;
+        }
+        .soviet-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #e8e3d7; border-left: 2px solid #1a1a1a; }
+        ::-webkit-scrollbar-thumb { background: #cc1b1b; border: 2px solid #1a1a1a; }
+
+        @keyframes subtle-pulse {
+            0%, 100% { opacity: 0.03; transform: scale(1) rotate(0deg); }
+            50% { opacity: 0.06; transform: scale(1.05) rotate(3deg); }
+        }
+        .bg-pulse-star { animation: subtle-pulse 15s infinite ease-in-out; }
+
+        #race-canvas {
+            display: block;
+            width: 100%;
+            max-width: 420px;
+            height: auto;
+            margin: 0 auto;
+            background: #3a5f3a;
+            touch-action: none;
+        }
+
+        .wheel-btn {
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+        }
+        .wheel-btn:active { transform: translateY(2px); }
+
+        .end-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body class="min-height-screen flex flex-col justify-between p-4 md:p-8 relative overflow-x-hidden">
+
+    <!-- GAME OVER SCREEN -->
+    <div id="gameover-screen" class="hidden end-overlay">
+        <div class="bg-[#e8e3d7] soviet-border soviet-shadow max-w-lg w-full p-8 md:p-10 text-center relative">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+                <i class="fa-solid fa-car-burst text-[#cc1b1b] text-3xl"></i>
+            </div>
+            <h2 class="stalinist-font text-xl sm:text-2xl md:text-3xl text-[#cc1b1b] uppercase mb-2 leading-tight break-words">Авария, Товарищ!</h2>
+            <p class="russo-font text-sm uppercase tracking-widest text-[#1a1a1a] mb-4">Crash, Comrade!</p>
+            <p class="text-xs text-gray-600 mb-6">Твоя Лада свернула не туда и врезалась в неверный перевод. Инспектор ГАИ качает головой.<br><em>(Your Lada turned the wrong way and crashed into the wrong translation. The traffic inspector shakes his head.)</em></p>
+            <div class="mb-6 text-xs font-black uppercase text-[#555]">
+                Пройдено Застав / Gates Cleared
+                <span id="gameover-score" class="russo-font text-3xl text-[#cc1b1b] block mt-1">0</span>
+            </div>
+            <button onclick="restartGame()" class="px-6 py-3 bg-[#cc1b1b] text-white font-bold uppercase soviet-border soviet-shadow-sm text-sm tracking-wider russo-font soviet-btn">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Играть Заново (Play Again)
+            </button>
+        </div>
+    </div>
+
+    <!-- Giant background aesthetic watermark -->
+    <div class="absolute -bottom-20 -left-20 w-96 h-96 pointer-events-none select-none bg-pulse-star">
+        <svg viewBox="0 0 24 24" fill="#cc1b1b" class="w-full h-full opacity-30">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+    </div>
+
+    <!-- TOP NAVIGATION HUD -->
+    <header class="w-full max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-4 mb-6 z-10">
+        <a href="/" class="back-btn px-4 py-2 bg-[#e5a93b] text-[#1a1a1a] font-bold soviet-border soviet-shadow-sm hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#1a1a1a] active:translate-y-[2px] active:shadow-[2px_2px_0px_#1a1a1a] transition-all text-sm uppercase russo-font">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Вернуться (Menu)
+        </a>
+
+        <div class="flex items-center gap-3">
+            <button id="sound-toggle" onclick="toggleSound()" class="px-3 py-2 bg-[#e8e3d7] soviet-border soviet-shadow-sm text-[#1a1a1a] font-bold text-xs uppercase hover:bg-white transition-all">
+                <i id="sound-icon" class="fa-solid fa-volume-high mr-1 text-[#cc1b1b]"></i> Audio: ON
+            </button>
+            <span class="px-3 py-2 bg-[#5c6b47] text-white soviet-border soviet-shadow-sm font-bold text-xs uppercase russo-font">
+                <i class="fa-solid fa-flag-checkered mr-1"></i> Счёт: <span id="score-display">0</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- MAIN INTERACTIVE WORKSPACE -->
+    <main class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 items-start z-10 flex-grow">
+
+        <!-- COLUMN 1 & 2: GAME BOARD -->
+        <section class="lg:col-span-2 bg-[#e8e3d7] soviet-border soviet-shadow p-6 md:p-8 relative">
+
+            <div class="absolute top-0 right-0 bg-[#cc1b1b] text-white text-[10px] font-black px-4 py-1 uppercase tracking-wider soviet-border border-t-0 border-r-0 border-l-2 border-b-2">
+                Кавказская Трасса
+            </div>
+
+            <div class="flex justify-between items-center border-b-4 border-[#1a1a1a] pb-4 mb-6">
+                <div>
+                    <h1 class="stalinist-font text-xl md:text-2xl text-[#cc1b1b] uppercase leading-none">БЫСТРЫЕ И КАВКАЗСКИЕ</h1>
+                    <p class="text-xs font-bold uppercase tracking-wider text-[#555] mt-1">The Fast, The Furious and The Kavkas</p>
+                </div>
+            </div>
+
+            <!-- ENGLISH WORD BANNER -->
+            <div class="bg-[#1a1a1a] soviet-border p-4 mb-4 text-center relative overflow-hidden">
+                <div class="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Переведи Слово / Translate The Word</div>
+                <div id="word-banner" class="stalinist-font text-xl sm:text-2xl md:text-3xl text-[#e5a93b] uppercase break-words">...</div>
+            </div>
+
+            <!-- CANVAS -->
+            <canvas id="race-canvas" width="420" height="680" class="soviet-border soviet-shadow-sm mb-4"></canvas>
+
+            <!-- TOUCH CONTROLS -->
+            <div class="flex justify-center gap-4 mb-2">
+                <button id="btn-left" class="wheel-btn px-8 py-4 bg-[#cc1b1b] text-white soviet-border soviet-shadow-sm text-xl font-black">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button id="btn-right" class="wheel-btn px-8 py-4 bg-[#cc1b1b] text-white soviet-border soviet-shadow-sm text-xl font-black">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+            <p class="text-center text-[10px] font-bold uppercase text-gray-500 tracking-wider">Клавиатура: ← → или A / D</p>
+
+        </section>
+
+        <!-- COLUMN 3: RULES SIDEBAR -->
+        <section class="bg-[#1a1a1a] text-white soviet-border soviet-shadow p-6 relative">
+            <div class="absolute -top-3 left-4 bg-[#cc1b1b] px-3 py-0.5 border-2 border-white font-bold text-xs uppercase tracking-widest russo-font">
+                ПРАВИЛА
+            </div>
+
+            <div class="border-b-2 border-white pb-3 mb-4 mt-2">
+                <h2 class="russo-font text-base text-[#e5a93b] uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-road"></i> Правила Движения
+                </h2>
+                <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Rules of the road</p>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="border border-gray-700 bg-zinc-900 p-3">
+                    <div class="font-bold text-yellow-500 uppercase text-[11px] mb-1"><i class="fa-solid fa-1"></i> Читай слово</div>
+                    <div class="text-[10px] text-gray-300">An English word appears at the top. Figure out its Russian translation.</div>
+                </div>
+                <div class="border border-gray-700 bg-zinc-900 p-3">
+                    <div class="font-bold text-yellow-500 uppercase text-[11px] mb-1"><i class="fa-solid fa-2"></i> Две заставы</div>
+                    <div class="text-[10px] text-gray-300">Two fences race toward you, one per lane, each with a Russian word.</div>
+                </div>
+                <div class="border border-gray-700 bg-zinc-900 p-3">
+                    <div class="font-bold text-yellow-500 uppercase text-[11px] mb-1"><i class="fa-solid fa-3"></i> Выбери полосу</div>
+                    <div class="text-[10px] text-gray-300">Steer your Lada into the lane with the CORRECT translation before it reaches you.</div>
+                </div>
+                <div class="border border-gray-700 bg-zinc-900 p-3">
+                    <div class="font-bold text-yellow-500 uppercase text-[11px] mb-1"><i class="fa-solid fa-4"></i> Осторожно!</div>
+                    <div class="text-[10px] text-gray-300">Wrong lane = crash, game over. Correct lane = drive through and keep racing forever.</div>
+                </div>
+                <div class="border border-gray-700 bg-zinc-900 p-3">
+                    <div class="font-bold text-yellow-500 uppercase text-[11px] mb-1"><i class="fa-solid fa-gauge-high"></i> Ускорение</div>
+                    <div class="text-[10px] text-gray-300">The road gets faster the more gates you clear. Stay sharp, comrade.</div>
+                </div>
+            </div>
+
+            <div class="mt-6 border-4 border-[#cc1b1b] p-4 text-center text-[#cc1b1b] tracking-widest font-black text-xs uppercase rotate-[-2deg] select-none">
+                Гони, товарищ, но не ошибись!
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-x-4 gap-y-1 text-[10px] font-bold text-gray-500 uppercase mt-8 border-t border-gray-300 pt-4">
+        <div>Learning Arena - The Fast, The Furious and The Kavkas © 2026</div>
+        <div>Слава Грамматике!</div>
+    </footer>
+
+    <script>
+        // CANVAS SETUP
+        const canvas = document.getElementById('race-canvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_W = canvas.width;
+        const CANVAS_H = canvas.height;
+
+        const ROAD_LEFT = 50;
+        const ROAD_RIGHT = CANVAS_W - 50;
+        const ROAD_WIDTH = ROAD_RIGHT - ROAD_LEFT;
+        const ROAD_CENTER = ROAD_LEFT + ROAD_WIDTH / 2;
+
+        const CAR_Y = CANVAS_H - 120;
+        const CAR_W = 40;
+        const CAR_H = 62;
+        const CAR_SPEED = 5;
+
+        const BASE_SCROLL_SPEED = 2.4;
+        const MAX_SCROLL_SPEED = 7;
+
+        const WORD_DISPLAY_MS = 1800;
+        const GATE_SPAWN_Y = -160;
+        const GATE_HEIGHT = 50;
+        const LANE_DEAD_ZONE = 16; // straddling the median this closely counts as hitting the divider, not a lane choice
+        const FENCE_GAP = 10;
+
+        // STATE
+        let carX = ROAD_CENTER;
+        let movingLeft = false;
+        let movingRight = false;
+        let roadScrollOffset = 0;
+        let score = 0;
+        let usedIds = [];
+        let currentWord = null;
+        let activeGate = null; // {y, leftWord, rightWord, correctSide, resolved}
+        let gameState = 'loading'; // 'loading' | 'showing_word' | 'racing' | 'gameover'
+        let isSoundEnabled = true;
+        let wordTimeoutHandle = null;
+
+        // AUDIO
+        let synth;
+        try {
+            synth = new Tone.Synth().toDestination();
+        } catch(e) {
+            console.log("Audio contexts blocked or not supported on load.");
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const soundBtn = document.getElementById('sound-toggle');
+            if (isSoundEnabled) {
+                soundBtn.innerHTML = `<i id="sound-icon" class="fa-solid fa-volume-high mr-1 text-[#cc1b1b]"></i> Audio: ON`;
+            } else {
+                soundBtn.innerHTML = `<i id="sound-icon" class="fa-solid fa-volume-xmark mr-1 text-gray-500"></i> Audio: OFF`;
+            }
+        }
+
+        function playSuccessSound() {
+            if (!isSoundEnabled || !synth) return;
+            try {
+                const now = Tone.now();
+                synth.triggerAttackRelease("C5", "8n", now);
+                synth.triggerAttackRelease("E5", "8n", now + 0.08);
+                synth.triggerAttackRelease("G5", "8n", now + 0.16);
+            } catch(err) {}
+        }
+
+        function playCrashSound() {
+            if (!isSoundEnabled || !synth) return;
+            try {
+                const now = Tone.now();
+                synth.triggerAttackRelease("D3", "8n", now);
+                synth.triggerAttackRelease("C3", "4n", now + 0.1);
+                synth.triggerAttackRelease("A2", "2n", now + 0.25);
+            } catch(err) {}
+        }
+
+        // INPUT: KEYBOARD
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'arrowleft' || key === 'a') movingLeft = true;
+            if (key === 'arrowright' || key === 'd') movingRight = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'arrowleft' || key === 'a') movingLeft = false;
+            if (key === 'arrowright' || key === 'd') movingRight = false;
+        });
+
+        // INPUT: TOUCH / MOUSE BUTTONS
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        ['mousedown', 'touchstart'].forEach(evt => {
+            btnLeft.addEventListener(evt, (e) => { e.preventDefault(); movingLeft = true; });
+            btnRight.addEventListener(evt, (e) => { e.preventDefault(); movingRight = true; });
+        });
+        ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(evt => {
+            btnLeft.addEventListener(evt, () => { movingLeft = false; });
+            btnRight.addEventListener(evt, () => { movingRight = false; });
+        });
+
+        // Speed ramps up in steps: +5% after word 5, +2% more after word 10,
+        // then +3% more every 10 words after that (20, 30, 40, ...).
+        function speedMultiplier(currentScore) {
+            let mult = 1;
+            if (currentScore >= 5) mult *= 1.05;
+            if (currentScore >= 10) mult *= 1.02;
+            const decadeBumps = Math.max(0, Math.floor(currentScore / 10) - 1);
+            mult *= Math.pow(1.03, decadeBumps);
+            return mult;
+        }
+
+        function currentScrollSpeed() {
+            return Math.min(MAX_SCROLL_SPEED, BASE_SCROLL_SPEED * speedMultiplier(score));
+        }
+
+        // WORD FETCHING
+        async function loadNextWord() {
+            document.getElementById('word-banner').textContent = '...';
+            try {
+                const response = await fetch(`/api/kavkaz/get_word?exclude=${usedIds.join(',')}`);
+                if (!response.ok) throw new Error("API route offline");
+                const data = await response.json();
+
+                if (data.reset) usedIds = [];
+                usedIds.push(data.id);
+
+                currentWord = {
+                    english: data.english,
+                    correct: data.correct_russian,
+                    decoy: data.decoy_russian
+                };
+
+                document.getElementById('word-banner').textContent = currentWord.english.toUpperCase();
+                gameState = 'showing_word';
+
+                clearTimeout(wordTimeoutHandle);
+                wordTimeoutHandle = setTimeout(spawnGate, WORD_DISPLAY_MS);
+            } catch (error) {
+                document.getElementById('word-banner').textContent = "ОШИБКА ЗАГРУЗКИ";
+                console.error("Critical loader failure:", error);
+            }
+        }
+
+        function spawnGate() {
+            const correctSide = Math.random() < 0.5 ? 'left' : 'right';
+            activeGate = {
+                y: GATE_SPAWN_Y,
+                leftWord: correctSide === 'left' ? currentWord.correct : currentWord.decoy,
+                rightWord: correctSide === 'left' ? currentWord.decoy : currentWord.correct,
+                correctSide,
+                resolved: false
+            };
+            gameState = 'racing';
+        }
+
+        function resolveGate() {
+            activeGate.resolved = true;
+
+            let carLane;
+            if (carX < ROAD_CENTER - LANE_DEAD_ZONE) {
+                carLane = 'left';
+            } else if (carX > ROAD_CENTER + LANE_DEAD_ZONE) {
+                carLane = 'right';
+            } else {
+                carLane = 'center'; // straddling the median — crashes into the divider no matter what
+            }
+
+            if (carLane === activeGate.correctSide) {
+                score++;
+                document.getElementById('score-display').textContent = score;
+                playSuccessSound();
+                activeGate = null;
+                loadNextWord();
+            } else {
+                triggerGameOver();
+            }
+        }
+
+        function triggerGameOver() {
+            gameState = 'gameover';
+            movingLeft = false;
+            movingRight = false;
+            playCrashSound();
+            document.getElementById('gameover-score').textContent = score;
+            setTimeout(() => {
+                document.getElementById('gameover-screen').classList.remove('hidden');
+            }, 400);
+        }
+
+        function restartGame() {
+            score = 0;
+            usedIds = [];
+            carX = ROAD_CENTER;
+            activeGate = null;
+            document.getElementById('score-display').textContent = '0';
+            document.getElementById('gameover-screen').classList.add('hidden');
+            gameState = 'loading';
+            loadNextWord();
+        }
+
+        // PHYSICS
+        function updatePhysics() {
+            if (gameState === 'gameover') return;
+
+            roadScrollOffset = (roadScrollOffset + currentScrollSpeed()) % 40;
+
+            if (movingLeft) carX -= CAR_SPEED;
+            if (movingRight) carX += CAR_SPEED;
+            const minX = ROAD_LEFT + CAR_W / 2 + 4;
+            const maxX = ROAD_RIGHT - CAR_W / 2 - 4;
+            carX = Math.max(minX, Math.min(maxX, carX));
+
+            if (gameState === 'racing' && activeGate && !activeGate.resolved) {
+                activeGate.y += currentScrollSpeed();
+                if (activeGate.y >= CAR_Y) {
+                    resolveGate();
+                }
+            }
+        }
+
+        // RENDERING
+        function drawRoad() {
+            ctx.fillStyle = '#3a5f3a';
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+            ctx.fillStyle = '#4a4a4a';
+            ctx.fillRect(ROAD_LEFT, 0, ROAD_WIDTH, CANVAS_H);
+
+            // Red/white curb stripes scrolling along both edges
+            ctx.save();
+            for (let y = -40 + roadScrollOffset; y < CANVAS_H; y += 40) {
+                ctx.fillStyle = (Math.floor((y - roadScrollOffset) / 40) % 2 === 0) ? '#cc1b1b' : '#f2efe9';
+                ctx.fillRect(ROAD_LEFT - 8, y, 8, 20);
+                ctx.fillRect(ROAD_RIGHT, y, 8, 20);
+            }
+            ctx.restore();
+
+            // Dashed center lane divider
+            ctx.fillStyle = '#e5a93b';
+            for (let y = -40 + roadScrollOffset; y < CANVAS_H; y += 40) {
+                ctx.fillRect(ROAD_CENTER - 3, y, 6, 24);
+            }
+        }
+
+        function drawFence(xStart, xEnd, y, word, isCorrectSide) {
+            const h = GATE_HEIGHT;
+            ctx.fillStyle = '#8a6d3b';
+            ctx.fillRect(xStart, y - h / 2, xEnd - xStart, h);
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(xStart, y - h / 2, xEnd - xStart, h);
+
+            ctx.fillStyle = '#f2efe9';
+            ctx.font = 'bold 15px Montserrat, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(word, (xStart + xEnd) / 2, y);
+        }
+
+        function drawGate() {
+            if (!activeGate) return;
+            const midGapStart = ROAD_CENTER - FENCE_GAP / 2;
+            const midGapEnd = ROAD_CENTER + FENCE_GAP / 2;
+            drawFence(ROAD_LEFT, midGapStart, activeGate.y, activeGate.leftWord, activeGate.correctSide === 'left');
+            drawFence(midGapEnd, ROAD_RIGHT, activeGate.y, activeGate.rightWord, activeGate.correctSide === 'right');
+        }
+
+        function drawCar() {
+            const x = carX - CAR_W / 2;
+            const y = CAR_Y - CAR_H / 2;
+
+            // Body
+            ctx.fillStyle = '#a9c2ae';
+            ctx.fillRect(x, y, CAR_W, CAR_H);
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, CAR_W, CAR_H);
+
+            // Windshield
+            ctx.fillStyle = '#7fa8c9';
+            ctx.fillRect(x + 6, y + 10, CAR_W - 12, 16);
+
+            // Headlights (front, top of car)
+            ctx.fillStyle = '#e5a93b';
+            ctx.fillRect(x + 2, y + 2, 7, 6);
+            ctx.fillRect(x + CAR_W - 9, y + 2, 7, 6);
+
+            // Taillights (rear, bottom of car)
+            ctx.fillStyle = '#cc1b1b';
+            ctx.fillRect(x + 2, y + CAR_H - 8, 7, 6);
+            ctx.fillRect(x + CAR_W - 9, y + CAR_H - 8, 7, 6);
+
+            // Wheels
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(x - 4, y + 6, 5, 14);
+            ctx.fillRect(x + CAR_W - 1, y + 6, 5, 14);
+            ctx.fillRect(x - 4, y + CAR_H - 20, 5, 14);
+            ctx.fillRect(x + CAR_W - 1, y + CAR_H - 20, 5, 14);
+        }
+
+        function render() {
+            drawRoad();
+            drawGate();
+            drawCar();
+
+            if (gameState === 'loading') {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+                ctx.fillStyle = '#f2efe9';
+                ctx.font = 'bold 16px Montserrat, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('ЗАВОДИМ ДВИГАТЕЛЬ...', CANVAS_W / 2, CANVAS_H / 2);
+            }
+        }
+
+        // MAIN LOOP
+        function gameLoop() {
+            updatePhysics();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // BOOT
+        window.onload = function() {
+            loadNextWord();
+            gameLoop();
+        }
+    </script>
+</body>
+</html>

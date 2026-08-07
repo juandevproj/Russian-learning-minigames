@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Declinator Arena - Игры на русском</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for retro Soviet typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Stalinist+One&family=Russo+One&family=Montserrat:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tone.js for high-fidelity vintage chiptune audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #f2efe9; /* Weathered retro poster cream */
+            color: #1a1a1a;
+        }
+
+        .soviet-border {
+            border: 4px solid #1a1a1a;
+        }
+
+        .soviet-shadow {
+            box-shadow: 8px 8px 0px #1a1a1a;
+        }
+
+        .soviet-shadow-sm {
+            box-shadow: 4px 4px 0px #1a1a1a;
+        }
+
+        .soviet-star {
+            filter: drop-shadow(2px 2px 0px #1a1a1a);
+        }
+
+        .russo-font {
+            font-family: 'Russo One', sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .stalinist-font {
+            font-family: 'Stalinist One', cursive;
+        }
+
+        /* Custom active transitions for responsive buttons */
+        .soviet-btn {
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .soviet-btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 10px 10px 0px #1a1a1a;
+        }
+        .soviet-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 0px #1a1a1a;
+        }
+
+        .soviet-option-btn {
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .soviet-option-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0px 6px 0px #1a1a1a;
+            background-color: #fcfbfa;
+        }
+        .soviet-option-btn:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0px 2px 0px #1a1a1a;
+        }
+
+        /* Grid specific structures */
+        .grid-header { 
+            font-family: 'Russo One', sans-serif;
+            text-align: center; 
+            border-bottom: 3px solid #1a1a1a; 
+            padding-bottom: 6px; 
+            font-size: 13px; 
+            text-transform: uppercase; 
+        }
+
+        /* Scrollbar aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e8e3d7;
+            border-left: 2px solid #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cc1b1b;
+            border: 2px solid #1a1a1a;
+        }
+
+        /* Animated vintage red-star background element */
+        @keyframes subtle-pulse {
+            0%, 100% { opacity: 0.03; transform: scale(1) rotate(0deg); }
+            50% { opacity: 0.06; transform: scale(1.05) rotate(3deg); }
+        }
+        .bg-pulse-star {
+            animation: subtle-pulse 15s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-height-screen flex flex-col justify-between p-4 md:p-8 relative overflow-x-hidden">
+
+    <!-- VICTORY SCREEN — full deck cleared -->
+    <div id="victory-screen" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-[#e8e3d7] soviet-border soviet-shadow max-w-lg w-full p-8 md:p-10 text-center relative">
+            <svg class="soviet-star w-20 h-20 mx-auto mb-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#cc1b1b" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <h2 class="stalinist-font text-xl sm:text-2xl md:text-3xl text-[#cc1b1b] uppercase mb-2 leading-tight break-words">Задание Выполнено, Товарищ!</h2>
+            <p class="russo-font text-sm uppercase tracking-widest text-[#1a1a1a] mb-4">Mission Accomplished, Comrade!</p>
+            <p class="text-xs text-gray-600 mb-6">Every phrase in the archive has been declined. The Party commends your grammar.</p>
+            <div class="mb-6 text-xs font-black uppercase text-[#555]">
+                Final Score <span id="victory-score" class="russo-font text-2xl text-[#28a745] block">000</span>
+            </div>
+            <button onclick="restartGame()" class="px-6 py-3 bg-[#cc1b1b] text-white font-bold uppercase soviet-border soviet-shadow-sm text-sm tracking-wider russo-font hover:translate-y-[-2px] hover:shadow-[10px_10px_0px_#1a1a1a] active:translate-y-[2px] active:shadow-[2px_2px_0px_#1a1a1a] transition-all">
+                <i class="fa-solid fa-rotate-right mr-2"></i> Начать заново (Play Again)
+            </button>
+        </div>
+    </div>
+
+    <!-- Giant background aesthetic watermark -->
+    <div class="absolute -bottom-20 -left-20 w-96 h-96 pointer-events-none select-none bg-pulse-star">
+        <svg viewBox="0 0 24 24" fill="#cc1b1b" class="w-full h-full opacity-30">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+    </div>
+
+    <!-- TOP NAVIGATION HUD -->
+    <header class="w-full max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-4 mb-6 z-10">
+        <a href="/" class="back-btn px-4 py-2 bg-[#e5a93b] text-[#1a1a1a] font-bold soviet-border soviet-shadow-sm hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_#1a1a1a] active:translate-y-[2px] active:shadow-[2px_2px_0px_#1a1a1a] transition-all text-sm uppercase russo-font">
+            <i class="fa-solid fa-arrow-left mr-2"></i> Вернуться (Menu)
+        </a>
+
+        <!-- Sound and System Information -->
+        <div class="flex items-center gap-3">
+            <button id="sound-toggle" onclick="toggleSound()" class="px-3 py-2 bg-[#e8e3d7] soviet-border soviet-shadow-sm text-[#1a1a1a] font-bold text-xs uppercase hover:bg-white transition-all">
+                <i id="sound-icon" class="fa-solid fa-volume-high mr-1 text-[#cc1b1b]"></i> Audio: ON
+            </button>
+            <span id="system-badge" class="px-3 py-2 bg-[#cc1b1b] text-white soviet-border soviet-shadow-sm font-bold text-xs uppercase russo-font">
+                <i class="fa-solid fa-satellite-dish mr-1 animate-pulse"></i> Hybrid Core
+            </span>
+        </div>
+    </header>
+
+    <!-- MAIN INTERACTIVE WORKSPACE -->
+    <main class="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 items-start z-10 flex-grow">
+        
+        <!-- COLUMN 1 & 2: GAME BOARD -->
+        <section class="lg:col-span-2 bg-[#e8e3d7] soviet-border soviet-shadow p-6 md:p-8 relative">
+            
+            <!-- Red corner propaganda strip -->
+            <div class="absolute top-0 right-0 bg-[#cc1b1b] text-white text-[10px] font-black px-4 py-1 uppercase tracking-wider soviet-border border-t-0 border-r-0 border-l-2 border-b-2">
+                Пятилетка Грамматики
+            </div>
+
+            <!-- Gamestate Header stats -->
+            <div class="flex flex-wrap justify-between items-center gap-y-3 border-b-4 border-[#1a1a1a] pb-4 mb-6">
+                <div>
+                    <h1 class="stalinist-font text-xl md:text-2xl text-[#cc1b1b] uppercase leading-none">ДЕКЛИНАТОР</h1>
+                    <p class="text-xs font-bold uppercase tracking-wider text-[#555] mt-1">Declinator Training System</p>
+                </div>
+                <div class="flex gap-4">
+                    <!-- Current Score badge -->
+                    <div class="text-right">
+                        <span class="text-[10px] font-black uppercase text-[#555] block">SCORE</span>
+                        <div class="russo-font text-2xl text-[#28a745]" id="score-val">000</div>
+                    </div>
+                    <!-- Streak badge -->
+                    <div class="text-right border-l-2 border-[#1a1a1a] pl-4">
+                        <span class="text-[10px] font-black uppercase text-[#555] block">STREAK</span>
+                        <div class="russo-font text-2xl text-[#cc1b1b]" id="streak-val">x1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- THE CHALLENGE DISPLAY -->
+            <div class="bg-[#faf9f6] soviet-border p-6 md:p-8 mb-6 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-2 h-full bg-[#cc1b1b]"></div>
+                
+                <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2" id="phrase-index">ЗАДАНИЕ №1 / TASK #1</div>
+                
+                <!-- Main Sentence Box -->
+                <p id="phrase-display" class="text-xl md:text-2xl font-bold leading-relaxed text-[#1a1a1a] my-4">
+                    Загрузка партийного задания...
+                </p>
+            </div>
+
+            <!-- GRID OF DECLINATIONS -->
+            <div class="mb-6">
+                <!-- Column headers for Genders (Strict Adjective view) -->
+                <div id="gender-headers" class="grid grid-cols-3 gap-3 mb-2 hidden">
+                    <div class="grid-header text-[#cc1b1b]"><i class="fa-solid fa-mars mr-1"></i> Masculine</div>
+                    <div class="grid-header text-[#c29124]"><i class="fa-solid fa-venus mr-1"></i> Feminine</div>
+                    <div class="grid-header text-[#00639b]"><i class="fa-solid fa-genderless mr-1"></i> Neuter</div>
+                </div>
+
+                <!-- Dynamic Grid container -->
+                <div id="buttons-grid" class="grid gap-3 transition-all duration-300">
+                    <!-- Dynamic choices inject here -->
+                </div>
+            </div>
+
+            <!-- FEEDBACK AREA & ACTION BOARD -->
+            <div id="feedback-panel" class="p-4 bg-[#f0ece1] soviet-border border-dashed flex justify-between items-center gap-4 hidden">
+                <div class="flex items-center gap-3">
+                    <div id="feedback-icon-frame" class="w-10 h-10 flex items-center justify-center text-white font-bold soviet-border text-lg">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div>
+                        <div id="feedback-title" class="font-bold text-sm uppercase tracking-wide">Правильно! (Correct!)</div>
+                        <div id="feedback-desc" class="text-xs text-gray-600">The noun declined accurately matching the context.</div>
+                    </div>
+                </div>
+                <button onclick="nextRound()" class="px-5 py-2 bg-[#cc1b1b] text-white font-bold uppercase soviet-border soviet-shadow-sm text-xs tracking-wider hover:bg-red-700 hover:translate-y-[-1px] transition-all">
+                    Next Task <i class="fa-solid fa-chevron-right ml-1"></i>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- COLUMN 3: VINTAGE GRAMMAR ASSISTANT CHEAT SHEET -->
+        <section class="bg-[#1a1a1a] text-white soviet-border soviet-shadow p-6 relative">
+            <div class="absolute -top-3 left-4 bg-[#cc1b1b] px-3 py-0.5 border-2 border-white font-bold text-xs uppercase tracking-widest russo-font">
+                СПРАВОЧНИК
+            </div>
+
+            <button type="button" onclick="toggleCaseGuide()" id="case-guide-toggle" class="w-full border-b-2 border-white pb-3 mb-4 mt-2 flex items-center justify-between text-left cursor-pointer">
+                <div>
+                    <h2 class="russo-font text-base text-[#e5a93b] uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-book-open"></i> Soviet Case Guide
+                    </h2>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">Study the rules. Build the state.</p>
+                </div>
+                <i id="case-guide-chevron" class="fa-solid fa-chevron-down text-[#e5a93b] transition-transform duration-200"></i>
+            </button>
+
+            <!-- Case selector toggle list -->
+            <div id="case-guide-list" class="hidden space-y-1 text-xs max-h-[480px] overflow-y-auto pr-1">
+
+                <!-- NOMINATIVE -->
+                <div class="border border-gray-700 bg-zinc-900 p-2.5 rounded-none">
+                    <div class="flex justify-between items-center font-bold text-yellow-500 uppercase text-[11px] mb-1">
+                        <span>Именительный (Nominative)</span>
+                        <span class="text-gray-500 font-normal">Who? What?</span>
+                    </div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">
+                        <strong>Nouns:</strong> (m) -/й, (f) а/я, (n) о/е.<br>
+                        <strong>Adjectives:</strong> (m) ый/ий, (f) ая/яя, (n) ое/ее.
+                    </div>
+                </div>
+
+                <!-- GENITIVE -->
+                <div class="border border-gray-700 bg-zinc-900 p-2.5 rounded-none">
+                    <div class="flex justify-between items-center font-bold text-yellow-500 uppercase text-[11px] mb-1">
+                        <span>Родительный (Genitive)</span>
+                        <span class="text-gray-500 font-normal">Of whom/what? (No...)</span>
+                    </div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">
+                        <strong>Nouns:</strong> (m) а/я, (f) ы/и, (n) а/я.<br>
+                        <strong>Adjectives:</strong> (m/n) ого/его, (f) ой/ей.
+                    </div>
+                </div>
+
+                <!-- DATIVE -->
+                <div class="border border-gray-700 bg-zinc-900 p-2.5 rounded-none">
+                    <div class="flex justify-between items-center font-bold text-yellow-500 uppercase text-[11px] mb-1">
+                        <span>Дательный (Dative)</span>
+                        <span class="text-gray-500 font-normal">To whom/what?</span>
+                    </div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">
+                        <strong>Nouns:</strong> (m) у/ю, (f) е/и, (n) у/ю.<br>
+                        <strong>Adjectives:</strong> (m/n) ому/ему, (f) ой/ей.
+                    </div>
+                </div>
+
+                <!-- ACCUSATIVE -->
+                <div class="border border-gray-700 bg-zinc-900 p-2.5 rounded-none">
+                    <div class="flex justify-between items-center font-bold text-yellow-500 uppercase text-[11px] mb-1">
+                        <span>Винительный (Accusative)</span>
+                        <span class="text-gray-500 font-normal">Direct object (I see...)</span>
+                    </div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">
+                        <strong>Nouns:</strong> Anim (m) а/я, Inanim (m) like Nom. (f) у/ю, (n) like Nom.<br>
+                        <strong>Adjectives:</strong> (f) ую/юю. (m/n) anim=Gen, inanim=Nom.
+                    </div>
+                </div>
+
+                <!-- INSTRUMENTAL -->
+                <div class="border border-gray-700 bg-zinc-900 p-2.5 rounded-none">
+                    <div class="flex justify-between items-center font-bold text-yellow-500 uppercase text-[11px] mb-1">
+                        <span>Творительный (Instrumental)</span>
+                        <span class="text-gray-500 font-normal">With/By what?</span>
+                    </div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">
+                        <strong>Nouns:</strong> (m) ом/ем, (f) ой/ей, (n) ом/ем.<br>
+                        <strong>Adjectives:</strong> (m/n) ым/им, (f) ой/ей.
+                    </div>
+                </div>
+
+                <!-- PREPOSITIONAL -->
+                <div class="border border-gray-700 bg-zinc-900 p-2.5 rounded-none">
+                    <div class="flex justify-between items-center font-bold text-yellow-500 uppercase text-[11px] mb-1">
+                        <span>Предложный (Prepositional)</span>
+                        <span class="text-gray-500 font-normal">About/In whom/what?</span>
+                    </div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">
+                        <strong>Nouns:</strong> (m/f/n) е (some nouns -и/-у).<br>
+                        <strong>Adjectives:</strong> (m/n) ом/ем, (f) ой/ей.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Interactive Motivational Stamp -->
+            <div class="mt-6 border-4 border-[#cc1b1b] p-4 text-center text-[#cc1b1b] tracking-widest font-black text-xs uppercase rotate-[-2deg] select-none">
+                Знание — оружие революции!
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER DESIGN -->
+    <footer class="w-full max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-x-4 gap-y-1 text-[10px] font-bold text-gray-500 uppercase mt-8 border-t border-gray-300 pt-4">
+        <div>Learning Arena - Russian Declinator Suite © 2026</div>
+        <div>Слава Грамматике!</div>
+    </footer>
+
+    <script>
+        // CLIENT-SIDE BACKUP DATABASE (Runs if App.py is not running or fails)
+        const OFFLINE_DATABASE = [
+            {
+                phrase: "Я вижу [новую] машину.",
+                correct_answer: "новую",
+                type: "ADJF",
+                options: [
+                    { word: "новый", label: "Masc - Nominative" },
+                    { word: "нового", label: "Masc - Genitive" },
+                    { word: "новому", label: "Masc - Dative" },
+                    { word: "новую", label: "Fem - Accusative" },
+                    { word: "новой", label: "Fem - Instrumental" },
+                    { word: "новом", label: "Masc - Prepositional" }
+                ]
+            },
+            {
+                phrase: "Это мой [лучший] друг.",
+                correct_answer: "лучший",
+                type: "ADJF",
+                options: [
+                    { word: "лучший", label: "Masc - Nominative" },
+                    { word: "лучшего", label: "Masc - Genitive" },
+                    { word: "лучшему", label: "Masc - Dative" },
+                    { word: "лучшую", label: "Fem - Accusative" },
+                    { word: "лучшим", label: "Masc - Instrumental" },
+                    { word: "лучшем", label: "Masc - Prepositional" }
+                ]
+            },
+            {
+                phrase: "У товарища нет красивой [карты].",
+                correct_answer: "карты",
+                type: "NOUN",
+                options: [
+                    { word: "карта", label: "Nominative" },
+                    { word: "карты", label: "Genitive" },
+                    { word: "карте", label: "Dative" },
+                    { word: "карту", label: "Accusative" },
+                    { word: "картой", label: "Instrumental" },
+                    { word: "карте", label: "Prepositional" }
+                ]
+            },
+            {
+                phrase: "Она мечтает о великом [путешествии].",
+                correct_answer: "путешествии",
+                type: "NOUN",
+                options: [
+                    { word: "путешествие", label: "Nominative" },
+                    { word: "путешествия", label: "Genitive" },
+                    { word: "путешествию", label: "Dative" },
+                    { word: "путешествие", label: "Accusative" },
+                    { word: "путешествием", label: "Instrumental" },
+                    { word: "путешествии", label: "Prepositional" }
+                ]
+            },
+            {
+                phrase: "Мы гуляем по широкому [парку].",
+                correct_answer: "парку",
+                type: "NOUN",
+                options: [
+                    { word: "парк", label: "Nominative" },
+                    { word: "парка", label: "Genitive" },
+                    { word: "парку", label: "Dative" },
+                    { word: "парк", label: "Accusative" },
+                    { word: "парком", label: "Instrumental" },
+                    { word: "парке", label: "Prepositional" }
+                ]
+            },
+            {
+                phrase: "Он пишет советской [ручкой].",
+                correct_answer: "ручкой",
+                type: "NOUN",
+                options: [
+                    { word: "ручка", label: "Nominative" },
+                    { word: "ручки", label: "Genitive" },
+                    { word: "ручке", label: "Dative" },
+                    { word: "ручку", label: "Accusative" },
+                    { word: "ручкой", label: "Instrumental" },
+                    { word: "ручке", label: "Prepositional" }
+                ]
+            },
+            {
+                phrase: "Ленин говорит о новом [мире].",
+                correct_answer: "мире",
+                type: "NOUN",
+                options: [
+                    { word: "мир", label: "Nominative" },
+                    { word: "мира", label: "Genitive" },
+                    { word: "миру", label: "Dative" },
+                    { word: "мир", label: "Accusative" },
+                    { word: "миром", label: "Instrumental" },
+                    { word: "мире", label: "Prepositional" }
+                ]
+            },
+            {
+                phrase: "Космонавт летит к далекой [планете].",
+                correct_answer: "планете",
+                type: "NOUN",
+                options: [
+                    { word: "планета", label: "Nominative" },
+                    { word: "планеты", label: "Genitive" },
+                    { word: "планете", label: "Dative" },
+                    { word: "планету", label: "Accusative" },
+                    { word: "планетой", label: "Instrumental" },
+                    { word: "планете", label: "Prepositional" }
+                ]
+            }
+        ];
+
+        // STATE VARIABLES
+        let score = 0;
+        let streak = 0;
+        let phraseCounter = 1;
+        let hasGuessedWrong = false;
+        let currentPhraseData = null;
+        let isSoundEnabled = true;
+        let useServerApi = true;
+        let seenPhraseIds = [];
+        let seenOfflineIndexes = [];
+
+        // BEEP GENERATORS FOR AUDIO CUES
+        let synth;
+        try {
+            synth = new Tone.Synth().toDestination();
+        } catch(e) {
+            console.log("Audio contexts blocked or not supported on load.");
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const soundIcon = document.getElementById('sound-icon');
+            const soundBtn = document.getElementById('sound-toggle');
+            if (isSoundEnabled) {
+                soundIcon.className = "fa-solid fa-volume-high mr-1 text-[#cc1b1b]";
+                soundBtn.innerHTML = `<i id="sound-icon" class="fa-solid fa-volume-high mr-1 text-[#cc1b1b]"></i> Audio: ON`;
+            } else {
+                soundIcon.className = "fa-solid fa-volume-xmark mr-1 text-gray-500";
+                soundBtn.innerHTML = `<i id="sound-icon" class="fa-solid fa-volume-xmark mr-1 text-gray-500"></i> Audio: OFF`;
+            }
+        }
+
+        function toggleCaseGuide() {
+            const list = document.getElementById('case-guide-list');
+            const chevron = document.getElementById('case-guide-chevron');
+            list.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        function playSuccessSound() {
+            if (!isSoundEnabled || !synth) return;
+            try {
+                // Happy upward arpeggio
+                const now = Tone.now();
+                synth.triggerAttackRelease("C5", "8n", now);
+                synth.triggerAttackRelease("E5", "8n", now + 0.1);
+                synth.triggerAttackRelease("G5", "4n", now + 0.2);
+            } catch(err) {}
+        }
+
+        function playFailureSound() {
+            if (!isSoundEnabled || !synth) return;
+            try {
+                // Sad slide down
+                const now = Tone.now();
+                synth.triggerAttackRelease("A3", "8n", now);
+                synth.triggerAttackRelease("F3", "4n", now + 0.15);
+            } catch(err) {}
+        }
+
+        // HYBRID RETRIEVAL MECHANISM
+        async function fetchPhrase() {
+            if (useServerApi) {
+                try {
+                    const response = await fetch(`/api/get_phrase?exclude=${seenPhraseIds.join(',')}`);
+                    if (!response.ok) throw new Error("API Route offline");
+                    const data = await response.json();
+
+                    if (data.completed) {
+                        return { completed: true };
+                    }
+
+                    document.getElementById('system-badge').innerHTML = `<i class="fa-solid fa-satellite-dish mr-1 text-[#28a745]"></i> Online Matrix`;
+                    seenPhraseIds.push(data.id);
+                    return {
+                        phrase: data.phrase,
+                        correct_answer: data.correct_answer,
+                        type: data.type,
+                        options: data.options
+                    };
+                } catch(err) {
+                    console.log("Failed to hit API server. Defaulting to local offline matrix sandbox.");
+                    useServerApi = false;
+                    document.getElementById('system-badge').innerHTML = `<i class="fa-solid fa-shield mr-1"></i> Standalone Mode`;
+                }
+            }
+
+            // Client-side fallback database (no repeats until the deck is exhausted)
+            const availableIndexes = OFFLINE_DATABASE
+                .map((_, i) => i)
+                .filter(i => !seenOfflineIndexes.includes(i));
+
+            if (availableIndexes.length === 0) {
+                return { completed: true };
+            }
+
+            const randomIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+            seenOfflineIndexes.push(randomIndex);
+            const selection = OFFLINE_DATABASE[randomIndex];
+
+            // Mask the bracketed word with underscores like the Flask template expectations
+            const displayMasked = selection.phrase.replace(/\[(.*?)\]/, '_______');
+
+            return {
+                phrase: displayMasked,
+                correct_answer: selection.correct_answer,
+                type: selection.type,
+                options: selection.options
+            };
+        }
+
+        // GAME CONTROL & INTERACTION ROUND
+        async function loadNextPhrase() {
+            // Hide feedback panel
+            document.getElementById('feedback-panel').classList.add('hidden');
+            
+            // Reset status
+            hasGuessedWrong = false;
+            
+            const gridContainer = document.getElementById('buttons-grid');
+            const phraseDisplay = document.getElementById('phrase-display');
+            const genderHeaders = document.getElementById('gender-headers');
+
+            phraseDisplay.innerHTML = `<span class="text-sm font-bold block text-red-500 tracking-widest uppercase mb-1">СВЯЗЬ... СКАНИРОВАНИЕ...</span> Идет загрузка...`;
+            gridContainer.innerHTML = '';
+
+            try {
+                // Load data
+                currentPhraseData = await fetchPhrase();
+
+                if (currentPhraseData.completed) {
+                    showVictoryScreen();
+                    return;
+                }
+
+                // Set text index counter
+                document.getElementById('phrase-index').textContent = `ЗАДАНИЕ №${phraseCounter} / TASK #${phraseCounter}`;
+                
+                // Format display text inside card
+                phraseDisplay.innerHTML = currentPhraseData.phrase.replace('_______', '<span id="word-gap" class="border-b-4 border-dashed border-[#cc1b1b] text-[#cc1b1b] font-black px-4 transition-all duration-300">_______</span>');
+
+                // Adjust grid layouts depending on part of speech
+                if (currentPhraseData.type === 'NOUN') {
+                    gridContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3';
+                    genderHeaders.classList.add('hidden');
+                } else {
+                    gridContainer.className = 'grid grid-cols-3 gap-1.5 sm:gap-3';
+                    genderHeaders.classList.remove('hidden');
+                }
+
+                // Inject and style choices
+                currentPhraseData.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.className = 'soviet-option-btn bg-white text-[#1a1a1a] soviet-border p-1.5 sm:p-4 text-center cursor-pointer font-bold relative group select-none flex flex-col justify-center items-center shadow-[0px_4px_0px_#1a1a1a] min-h-[64px] sm:min-h-[80px] min-w-0';
+                    button.innerHTML = `
+                        <span class="text-xs sm:text-base font-black tracking-wide russo-font text-[#1a1a1a] transition-colors break-words leading-tight w-full">${option.word}</span>
+                        <span class="text-[7px] sm:text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1 block">${option.label}</span>
+                    `;
+                    
+                    button.addEventListener('click', () => {
+                        handleChoiceSelection(button, option);
+                    });
+
+                    gridContainer.appendChild(button);
+                });
+
+            } catch (error) {
+                phraseDisplay.textContent = "Ошибка загрузки! (Load Error)";
+                console.error("Critical loader failure:", error);
+            }
+        }
+
+        // USER SELECTION RESOLUTION
+        function handleChoiceSelection(buttonElement, optionObj) {
+            const gridContainer = document.getElementById('buttons-grid');
+            const gapSpan = document.getElementById('word-gap');
+            
+            // Check correct logic
+            if (optionObj.word === currentPhraseData.correct_answer) {
+                playSuccessSound();
+                buttonElement.style.backgroundColor = "#28a745";
+                buttonElement.style.color = "white";
+                buttonElement.querySelector('span').style.color = "white";
+                buttonElement.classList.add('animate-bounce');
+
+                // Fill the gap
+                gapSpan.textContent = currentPhraseData.correct_answer;
+                gapSpan.className = "text-[#28a745] font-black border-b-4 border-[#28a745] px-4 scale-110";
+
+                // Increment score and streaks
+                if (!hasGuessedWrong) {
+                    streak++;
+                    const multiplier = Math.min(Math.floor(streak / 3) + 1, 5);
+                    score += 100 * multiplier;
+                    
+                    document.getElementById('score-val').textContent = score.toString().padStart(3, '0');
+                    document.getElementById('streak-val').textContent = `x${multiplier}`;
+                    if(multiplier > 1) {
+                        document.getElementById('streak-val').classList.add('text-[#e5a93b]', 'scale-105');
+                    }
+                }
+
+                // Lock the grid
+                Array.from(gridContainer.children).forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.cursor = "not-allowed";
+                });
+
+                // Display success prompt panel
+                showFeedbackPanel(true);
+
+            } else {
+                // Wrong guess path
+                playFailureSound();
+                buttonElement.style.backgroundColor = "#dc3545";
+                buttonElement.style.color = "white";
+                buttonElement.querySelector('span').style.color = "white";
+                buttonElement.disabled = true;
+                buttonElement.style.opacity = "0.4";
+                buttonElement.style.cursor = "not-allowed";
+                
+                hasGuessedWrong = true;
+                streak = 0; // Reset streak multipliers
+                document.getElementById('streak-val').textContent = `x1`;
+                document.getElementById('streak-val').classList.remove('text-[#e5a93b]', 'scale-105');
+            }
+        }
+
+        // FEEDBACK WRAPPER
+        function showFeedbackPanel(isCorrect) {
+            const panel = document.getElementById('feedback-panel');
+            const iconFrame = document.getElementById('feedback-icon-frame');
+            const title = document.getElementById('feedback-title');
+            const desc = document.getElementById('feedback-desc');
+
+            panel.classList.remove('hidden');
+
+            if (isCorrect) {
+                iconFrame.style.backgroundColor = "#28a745";
+                title.style.color = "#28a745";
+
+                if (!hasGuessedWrong) {
+                    iconFrame.innerHTML = `<i class="fa-solid fa-trophy text-white"></i>`;
+                    title.textContent = "Задание Выполнено! (Task Accomplished!)";
+                    desc.textContent = "The requested sentence stands complete. Excellent grammar execution, comrade!";
+                } else {
+                    iconFrame.innerHTML = `<i class="fa-solid fa-check text-white"></i>`;
+                    title.textContent = "Ладно, Сойдёт. (Fine. It'll Do.)";
+                    desc.textContent = "The sentence is technically complete. Your errors have been noted in your file, comrade.";
+                }
+            }
+        }
+
+        function nextRound() {
+            phraseCounter++;
+            loadNextPhrase();
+        }
+
+        // VICTORY SCREEN — shown once every phrase in the deck has been used
+        function showVictoryScreen() {
+            document.getElementById('victory-score').textContent = score.toString().padStart(3, '0');
+            document.getElementById('victory-screen').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            score = 0;
+            streak = 0;
+            phraseCounter = 1;
+            seenPhraseIds = [];
+            seenOfflineIndexes = [];
+            document.getElementById('score-val').textContent = '000';
+            document.getElementById('streak-val').textContent = 'x1';
+            document.getElementById('streak-val').classList.remove('text-[#e5a93b]', 'scale-105');
+            document.getElementById('victory-screen').classList.add('hidden');
+            loadNextPhrase();
+        }
+
+        // BOOT SYSTEM
+        window.onload = function() {
+            loadNextPhrase();
+        }
+    </script>
+</body>
+</html>
